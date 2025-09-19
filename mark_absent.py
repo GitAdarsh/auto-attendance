@@ -1,51 +1,45 @@
-import os
-import pymysql
+import psycopg2
+from datetime import date
 
-DB = {
-    'host': os.environ.get('DB_HOST'),
-    'user': os.environ.get('DB_USER'),
-    'password': os.environ.get('DB_PASS'),
-    'db': os.environ.get('DB_NAME'),
-    'port': int(os.environ.get('DB_PORT', 3306))
-}
+DB_HOST = "https://zzktygkmiihnmknsfxfl.supabase.co"
+DB_NAME = "postgres"
+DB_USER = "postgres"
+DB_PASSWORD = "0bhufAKVj69n2bKd"
+DB_PORT = "5432"
 
-def get_conn():
-    return pymysql.connect(**DB, cursorclass=pymysql.cursors.DictCursor)
+def mark_absent():
+    conn = psycopg2.connect(
+        host=DB_HOST,
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        port=DB_PORT
+    )
+    cur = conn.cursor()
 
-schema = """
-CREATE TABLE IF NOT EXISTS students (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(200),
-  roll_no VARCHAR(50),
-  card_uid VARCHAR(100) UNIQUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    # 1. All students
+    cur.execute("SELECT student_id FROM students")
+    all_students = {r[0] for r in cur.fetchall()}
 
-CREATE TABLE IF NOT EXISTS attendance (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  student_id INT NOT NULL,
-  card_uid VARCHAR(100) NOT NULL,
-  status ENUM('present','absent','late') NOT NULL DEFAULT 'present',
-  timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  attendance_date DATE NOT NULL,
-  device_id VARCHAR(100),
-  UNIQUE KEY unique_student_date (student_id, attendance_date),
-  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-);
-"""
+    # 2. Already present today
+    cur.execute("SELECT student_id FROM attendance WHERE DATE(timestamp) = %s", (date.today(),))
+    present_students = {r[0] for r in cur.fetchall()}
 
-def run():
-    conn = get_conn()
-    try:
-        with conn.cursor() as cur:
-            for stmt in schema.split(';'):
-                s = stmt.strip()
-                if s:
-                    cur.execute(s + ';')
-        conn.commit()
-        print("✅ Tables created/verified.")
-    finally:
-        conn.close()
+    # 3. Calculate absent
+    absent_students = all_students - present_students
+
+    # 4. Insert absent
+    for sid in absent_students:
+        cur.execute(
+            "INSERT INTO attendance (student_id, card_uid, status) VALUES (%s, %s, %s)",
+            (sid, None, "absent")
+        )
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
 if __name__ == "__main__":
-    run()
+    mark_absent()
+    print("Auto absent marked for today!")
+
