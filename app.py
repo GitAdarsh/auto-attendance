@@ -5,10 +5,10 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 # Supabase DB credentials
-DB_HOST = "db.xxxxx.supabase.co"   # Supabase se copy karo
+DB_HOST = https://zzktygkmiihnmknsfxfl.supabase.co  # Supabase se copy karo
 DB_NAME = "postgres"
 DB_USER = "postgres"
-DB_PASSWORD = "<your-db-password>"  # Supabase project banate time dala tha
+DB_PASSWORD = "0bhufAKVj69n2bKd"  # Supabase project banate time dala tha
 DB_PORT = "5432"
 
 # Database connection
@@ -43,3 +43,4 @@ def tap_card():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
